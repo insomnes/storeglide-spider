@@ -19,6 +19,6 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: mongo
     volumes:
       - ./db:/data/db
-    ports:
+    expose:
       - "27017"
     restart: on-failure
