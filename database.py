@@ -18,6 +18,7 @@ client = AsyncIOMotorClient(URI)
 db: Database = client.storglide
 users_coll: Collection = db.users
 apps_coll: Collection = db.apps
+queue_coll: Collection = db.queue_coll
 
 
 async def create_app(app: Dict[str, str]):
@@ -126,3 +127,25 @@ async def get_developers(cid: int):
 
     result = await users_coll.find_one(user, projection=projection)
     return result["developers"] if result else list()
+
+
+async def get_user_last_developer(cid: int):
+    user = {"cid": cid}
+    slicer = {"developers": {"$slice": -1}}
+    result = await users_coll.find_one(user, slicer)
+    result = result["developers"] if result["developers"] else []
+
+    return result
+
+
+async def insert_task(task: Dict):
+    result: InsertOneResult = await queue_coll.insert_one(task)
+    return result.inserted_id
+
+
+async def get_rsearch_task():
+    task = await queue_coll.find_one_and_delete(
+        {'type': 'rsearch'}, sort=[('_id', pymongo.ASCENDING)]
+    )
+
+    return task

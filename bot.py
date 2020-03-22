@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import pymongo.errors
 import yaml
@@ -43,6 +44,11 @@ Use /add %DEVELOPER% to add developer for your notifications.
 STOP_MESSAGE = """
 Notifications stopped.
 """
+
+RETROSEARCH_SKIP = 0
+RETROSEARCH_LIMIT = 5
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -94,6 +100,14 @@ async def add_handler(message: types.Message):
         text = "Done"
 
     await message.answer(text)
+    if dev not in text:
+        callback_data = f"rsrch__"
+        markup = types.InlineKeyboardMarkup()
+        button = types.InlineKeyboardButton(
+            text="Yes", callback_data=callback_data
+        )
+        markup.add(button)
+        await message.answer("Want to start retrospective search?", reply_markup=markup)
 
 
 @dp.message_handler(commands=['del'])
@@ -161,6 +175,19 @@ async def delete_dev_callback_query(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(text)
     await db.del_developer(callback_query.message.chat.id, dev)
     await callback_query.message.reply("Deleted")
+
+
+@dp.callback_query_handler(lambda callback_query: "rsrch__" in callback_query.data)
+async def retro_search_callback_query(callback_query: types.CallbackQuery):
+    text = "Searching..."
+    search_task = {
+        "type": "rsearch",
+        "cid": callback_query.message.chat.id,
+    }
+    await asyncio.gather(
+        asyncio.create_task(callback_query.message.edit_text(text)),
+        asyncio.create_task(db.insert_task(search_task))
+    )
 
 
 if __name__ == '__main__':
