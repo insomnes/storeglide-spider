@@ -21,6 +21,8 @@ PROXY_URL = f"{PROXY_PROTO}://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT
 API_TOKEN = secrets["api_token"]
 SLEEP_TIMER_SECS = 300
 
+RETROSPECTIVE_SEARCH_AGENT_COUNT = 5
+RETROSPECTIVE_SEARCH_AGENT_SLEEP_TIMER = 0.3
 
 bot = Bot(token=API_TOKEN, proxy=PROXY_URL)
 
@@ -70,7 +72,32 @@ async def start_notifier():
         await asyncio.sleep(SLEEP_TIMER_SECS)
 
 
+async def start_retrospective_search_agent(agent_id: int):
+    output_log(f"Starting retrospective search agent (agent_id: {agent_id})")
+    while True:
+        task = await db.get_rsearch_task()
+        if task:
+            cid = task['cid']
+            output_log(f"Task found for cid {cid} (agent_id: {agent_id})")
+            dev = await db.get_user_last_developer(cid)
+            if dev:
+                dev = dev[0]
+                apps = db.search_apps_by_dev(dev)
+                send_task = []
+                async for app in apps:
+                    text = "New app {name} from {author} released for {countries}:\n{link}".format(**app)
+                    send_task.append(asyncio.create_task(bot.send_message(cid, text)))
+
+        await asyncio.sleep(RETROSPECTIVE_SEARCH_AGENT_SLEEP_TIMER)
+
+
 if __name__ == "__main__":
     sleep(5)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_notifier())
+    for i in range(RETROSPECTIVE_SEARCH_AGENT_COUNT):
+        loop.create_task(start_retrospective_search_agent(i))
+    loop.create_task(start_notifier())
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()
