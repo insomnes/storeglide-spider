@@ -20,6 +20,7 @@ PROXY_URL = f"{PROXY_PROTO}://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT
 
 API_TOKEN = secrets["api_token"]
 SLEEP_TIMER_SECS = 300
+APP_EXPIRE_SECS = 5 * 24 * 60 * 60
 
 RETROSPECTIVE_SEARCH_AGENT_COUNT = 5
 RETROSPECTIVE_SEARCH_AGENT_SLEEP_TIMER = 0.3
@@ -64,7 +65,18 @@ async def notify_users():
         output_log("Marking apps as notified done")
 
 
+async def init_db():
+    output_log("Starting DB")
+    output_log("Creating indexes")
+    await db.apps_coll.create_index([("name", 1)], unique=True)
+    await db.apps_coll.create_index([("created", 1)], expireAfterSeconds=APP_EXPIRE_SECS)
+    await db.apps_coll.create_index([("author", "text")])
+    await db.users_coll.create_index([("cid", 1)], unique=True)
+    output_log("DB init done")
+
+
 async def start_notifier():
+    await init_db()
     output_log("Starting cycle")
     while True:
         await notify_users()

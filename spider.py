@@ -26,7 +26,6 @@ AppList = List[Dict[str, str]]
 STOREGLIDE_URL = "https://store.storeglide.com/"
 STOREGLIDE_PAGES_DEEP = 10
 SLEEP_TIMER_SECS = 300
-APP_EXPIRE_SECS = 5 * 24 * 60 * 60
 
 
 def output_log(message, level="INFO"):
@@ -89,16 +88,6 @@ def parse_pages(page_list: List[str]) -> AppList:
     return parsed_apps
 
 
-async def init_db():
-    output_log("Starting DB")
-    output_log("Creating indexes")
-    await db.apps_coll.create_index([("name", 1)], unique=True)
-    await db.apps_coll.create_index([("created", 1)], expireAfterSeconds=APP_EXPIRE_SECS)
-    await db.apps_coll.create_index([("author", "text")])
-    await db.users_coll.create_index([("cid", 1)], unique=True)
-    output_log("DB init done")
-
-
 async def insert_apps(apps: AppList):
     output_log("Inserting apps")
     tasks = [
@@ -111,7 +100,6 @@ async def insert_apps(apps: AppList):
 
 
 async def start_spider():
-    await init_db()
     output_log("Starting cycle")
     while True:
         connector = ProxyConnector.from_url(PROXY_URL)
