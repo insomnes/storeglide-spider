@@ -1,3 +1,5 @@
+import asyncio
+import uvloop
 import pymongo.errors
 from bson import ObjectId
 from datetime import datetime
@@ -14,7 +16,10 @@ PORT = "27017"
 
 URI = f"mongodb://{USER}:{PASSWORD}@{HOST}:{PORT}"
 
-client = AsyncIOMotorClient(URI)
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+loop = asyncio.get_event_loop()
+
+client = AsyncIOMotorClient(URI, io_loop=loop)
 db: Database = client.storglide
 users_coll: Collection = db.users
 apps_coll: Collection = db.apps

@@ -135,7 +135,7 @@ def handle_uncaught_exception(loop, context):
 
 if __name__ == "__main__":
     sleep(5)
-    loop = asyncio.get_event_loop()
+    loop = db.loop
     signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
     for s in signals:
         loop.add_signal_handler(s, lambda s=s: asyncio.create_task(shutdown(loop, signal=s)))
