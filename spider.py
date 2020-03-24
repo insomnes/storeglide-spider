@@ -12,7 +12,7 @@ import database as db
 
 SECRETS_FILE = "secrets/http_proxy.json"
 with open(SECRETS_FILE) as file:
-    secrets = json.loads(file)
+    secrets = json.load(file)
 
 PROXY_HOST = secrets["proxy_host"]
 PROXY_PORT = secrets["proxy_port"]

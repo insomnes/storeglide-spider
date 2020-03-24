@@ -9,7 +9,7 @@ import database as db
 
 SECRETS_FILE = "secrets/credentials.json"
 with open(SECRETS_FILE) as file:
-    secrets = json.loads(file)
+    secrets = json.load(file)
 
 
 PROXY_HOST = secrets["proxy_host"]
