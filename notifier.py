@@ -1,15 +1,15 @@
 import asyncio
 import signal
-import yaml
+import json
 from aiogram import Bot
 from datetime import datetime
 from time import sleep
 
 import database as db
 
-SECRETS_FILE = "secrets/credentials.yml"
+SECRETS_FILE = "secrets/credentials.json"
 with open(SECRETS_FILE) as file:
-    secrets = yaml.safe_load(file)
+    secrets = json.loads(file)
 
 
 PROXY_HOST = secrets["proxy_host"]
@@ -137,4 +137,5 @@ if __name__ == "__main__":
         loop.create_task(start_notifier())
         loop.run_forever()
     finally:
+        output_log("Successfully shutdown Notifier")
         loop.close()
