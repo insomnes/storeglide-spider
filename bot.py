@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import pymongo.errors
-import yaml
+import json
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -9,9 +9,9 @@ from time import sleep
 
 import database as db
 
-SECRETS_FILE = "secrets/credentials.yml"
+SECRETS_FILE = "secrets/credentials.json"
 with open(SECRETS_FILE) as file:
-    secrets = yaml.safe_load(file)
+    secrets = json.load(file)
 
 
 PROXY_HOST = secrets["proxy_host"]
@@ -47,7 +47,6 @@ Notifications stopped.
 
 RETROSEARCH_SKIP = 0
 RETROSEARCH_LIMIT = 5
-
 
 
 # Configure logging

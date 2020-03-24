@@ -1,6 +1,6 @@
 import asyncio
 import signal
-import yaml
+import json
 from aiohttp import ClientSession
 from aiohttp_socks import ProxyConnector
 from bs4 import BeautifulSoup
@@ -10,9 +10,9 @@ from typing import Dict, List
 
 import database as db
 
-SECRETS_FILE = "secrets/http_proxy.yml"
+SECRETS_FILE = "secrets/http_proxy.json"
 with open(SECRETS_FILE) as file:
-    secrets = yaml.safe_load(file)
+    secrets = json.load(file)
 
 PROXY_HOST = secrets["proxy_host"]
 PROXY_PORT = secrets["proxy_port"]
