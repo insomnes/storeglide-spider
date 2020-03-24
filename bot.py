@@ -2,6 +2,7 @@ import asyncio
 import logging
 import pymongo.errors
 import json
+import signal
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -54,7 +55,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN, proxy=PROXY_URL)
-dp = Dispatcher(bot)
+loop = db.loop
+dp = Dispatcher(bot, loop=loop)
 
 
 class Form(StatesGroup):
@@ -189,6 +191,26 @@ async def retro_search_callback_query(callback_query: types.CallbackQuery):
     )
 
 
+async def shutdown(loop, signal=None):
+    if signal:
+        logging.info(f"Received exit signal {signal.name}")
+    tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+    [task.cancel() for task in tasks]
+    logging.info(f"Cancelling {len(tasks)} tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    logging.info(f"Closing database session")
+    db.client.close()
+    logging.info("Done.")
+    loop.stop()
+
+
 if __name__ == '__main__':
-    sleep(7)
-    executor.start_polling(dp, skip_updates=True)
+    sleep(5)
+    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        loop.add_signal_handler(s, lambda s=s: asyncio.create_task(shutdown(loop, signal=s)))
+    try:
+        executor.start_polling(dp, skip_updates=True)
+    finally:
+        logging.info("Successfully shutdown Bot")
+        loop.close()
