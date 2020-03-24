@@ -1,16 +1,17 @@
 version: '2'
 services:
+  # exec format for signal catching
   bot:
     build: .
-    command: "python3 /usr/src/app/bot.py"
+    command: ["python3", "/usr/src/app/bot.py"]
     restart: always
   spider:
     build: .
-    command: "python3 /usr/src/app/spider.py"
+    command: ["python3", "/usr/src/app/spider.py"]
     restart: always
   notifier:
     build: .
-    command: "python3 /usr/src/app/notifier.py"
+    command: ["python3", "/usr/src/app/notifier.py"]
     restart: always
   mongo:
     image: "mongo"

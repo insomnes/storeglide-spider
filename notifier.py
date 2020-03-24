@@ -1,4 +1,5 @@
 import asyncio
+import signal
 import yaml
 from aiogram import Bot
 from datetime import datetime
@@ -103,13 +104,37 @@ async def start_retrospective_search_agent(agent_id: int):
         await asyncio.sleep(RETROSPECTIVE_SEARCH_AGENT_SLEEP_TIMER)
 
 
+async def shutdown(loop, signal=None):
+    if signal:
+        output_log(f"Received exit signal {signal.name}")
+    tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+    [task.cancel() for task in tasks]
+    output_log(f"Cancelling {len(tasks)} tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    output_log(f"Closing database session")
+    db.client.close()
+    output_log("Done.")
+    loop.stop()
+
+
+def handle_uncaught_exception(loop, context):
+    msg = context.get("exception", context["message"])
+    output_log(f"Caught exception: {msg}", "ERROR")
+    output_log("Shutting down")
+    asyncio.create_task(shutdown(loop))
+
+
 if __name__ == "__main__":
     sleep(5)
     loop = asyncio.get_event_loop()
-    for i in range(RETROSPECTIVE_SEARCH_AGENT_COUNT):
-        loop.create_task(start_retrospective_search_agent(i))
-    loop.create_task(start_notifier())
+    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        loop.add_signal_handler(s, lambda s=s: asyncio.create_task(shutdown(loop, signal=s)))
+    loop.set_exception_handler(handle_uncaught_exception)
     try:
+        for i in range(RETROSPECTIVE_SEARCH_AGENT_COUNT):
+            loop.create_task(start_retrospective_search_agent(i))
+        loop.create_task(start_notifier())
         loop.run_forever()
     finally:
         loop.close()

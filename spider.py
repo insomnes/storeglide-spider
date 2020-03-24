@@ -1,4 +1,5 @@
 import asyncio
+import signal
 import yaml
 from aiohttp import ClientSession
 from aiohttp_socks import ProxyConnector
@@ -112,7 +113,36 @@ async def start_spider():
         await asyncio.sleep(SLEEP_TIMER_SECS)
 
 
+async def shutdown(loop, signal=None):
+    if signal:
+        output_log(f"Received exit signal {signal.name}")
+    tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+    [task.cancel() for task in tasks]
+    output_log(f"Cancelling {len(tasks)} tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    output_log(f"Closing database session")
+    db.client.close()
+    output_log("Done.")
+    loop.stop()
+
+
+def handle_uncaught_exception(loop, context):
+    msg = context.get("exception", context["message"])
+    output_log(f"Caught exception: {msg}", "ERROR")
+    output_log("Shutting down")
+    asyncio.create_task(shutdown(loop))
+
+
 if __name__ == "__main__":
     sleep(5)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_spider())
+    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        loop.add_signal_handler(s, lambda s=s: asyncio.create_task(shutdown(loop, signal=s)))
+    loop.set_exception_handler(handle_uncaught_exception)
+    try:
+        loop.create_task(start_spider())
+        loop.run_forever()
+    finally:
+        output_log("Successfully shutdown Spider")
+        loop.close()
