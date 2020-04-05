@@ -137,8 +137,7 @@ def handle_uncaught_exception(loop, context):
     msg = context.get("exception", context["message"])
     output_log(f"Caught exception: {msg}", "ERROR")
     output_log("Notifying admins")
-    await notify_admins(f"NOTIFIER Caught exception: {msg}")
-    output_log("Notification done")
+    asyncio.create_task(notify_admins(f"NOTIFIER Caught exception: {msg}"))
     output_log("Shutting down")
     asyncio.create_task(shutdown(loop))
 
