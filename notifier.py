@@ -7,6 +7,10 @@ from time import sleep
 
 import database as db
 
+ADMINS_FILE = "secrets/admins.json"
+with open(ADMINS_FILE) as admins_file:
+    admins = json.load(admins_file)
+
 SECRETS_FILE = "secrets/credentials.json"
 with open(SECRETS_FILE) as file:
     secrets = json.load(file)
@@ -33,6 +37,13 @@ def output_log(message, level="INFO"):
     n = datetime.now()
     ns = n.strftime("%Y-%m-%d %H:%M:%S")
     print(f"{ns} " + f"[{level.upper()}".ljust(10, " ") + f"] {message}")
+
+
+async def notify_admins(text: str):
+    n_tasks = [
+        asyncio.create_task(bot.send_message(cid, text)) for cid in admins["cids"]
+    ]
+    await asyncio.gather(*n_tasks)
 
 
 async def notify_users():
@@ -97,9 +108,14 @@ async def start_retrospective_search_agent(agent_id: int):
                 dev = dev[0]
                 apps = db.search_apps_by_dev(dev)
                 send_task = []
+                found_flag = False
                 async for app in apps:
                     text = "New app {name} from {author} released for {countries}:\n{link}".format(**app)
                     send_task.append(asyncio.create_task(bot.send_message(cid, text)))
+                if not found_flag:
+                    text = "Nothing found"
+                    send_task.append(asyncio.create_task(bot.send_message(cid, text)))
+            output_log(f"Task ended for cid {cid} (agent_id: {agent_id})")
 
         await asyncio.sleep(RETROSPECTIVE_SEARCH_AGENT_SLEEP_TIMER)
 
@@ -120,6 +136,9 @@ async def shutdown(loop, signal=None):
 def handle_uncaught_exception(loop, context):
     msg = context.get("exception", context["message"])
     output_log(f"Caught exception: {msg}", "ERROR")
+    output_log("Notifying admins")
+    await notify_admins(f"NOTIFIER Caught exception: {msg}")
+    output_log("Notification done")
     output_log("Shutting down")
     asyncio.create_task(shutdown(loop))
 
