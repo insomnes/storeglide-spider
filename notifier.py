@@ -11,6 +11,9 @@ ADMINS_FILE = "secrets/admins.json"
 with open(ADMINS_FILE) as admins_file:
     admins = json.load(admins_file)
 
+NOTIFY_ADMINS_TASK_NAME = "adm_notify"
+NOTIFY_ADMINS_TASK_TIMEOUT = 3
+
 SECRETS_FILE = "secrets/credentials.json"
 with open(SECRETS_FILE) as file:
     secrets = json.load(file)
@@ -123,6 +126,14 @@ async def start_retrospective_search_agent(agent_id: int):
 async def shutdown(loop, signal=None):
     if signal:
         output_log(f"Received exit signal {signal.name}")
+    for task in asyncio.all_tasks():
+        if task.get_name() == NOTIFY_ADMINS_TASK_NAME:
+            output_log(f"Waiting for admin notification completion for {NOTIFY_ADMINS_TASK_TIMEOUT} seconds")
+            try:
+                await asyncio.wait_for(task, timeout=NOTIFY_ADMINS_TASK_TIMEOUT)
+                output_log("Admin notifications completed")
+            except asyncio.TimeoutError:
+                output_log("Admin notification timeouted", "ERROR")
     tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
     [task.cancel() for task in tasks]
     output_log(f"Cancelling {len(tasks)} tasks")
@@ -137,7 +148,7 @@ def handle_uncaught_exception(loop, context):
     msg = context.get("exception", context["message"])
     output_log(f"Caught exception: {msg}", "ERROR")
     output_log("Notifying admins")
-    asyncio.create_task(notify_admins(f"NOTIFIER Caught exception: {msg}"))
+    asyncio.create_task(notify_admins(f"NOTIFIER Caught exception: {msg}"), name=NOTIFY_ADMINS_TASK_NAME)
     output_log("Shutting down")
     asyncio.create_task(shutdown(loop))
 
