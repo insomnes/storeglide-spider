@@ -22,4 +22,4 @@ services:
       - ./db:/data/db
     expose:
       - "27017"
-    restart: on-failure
+    restart: always
